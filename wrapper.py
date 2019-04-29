@@ -84,8 +84,8 @@ class Sequence(object):
                           layer2Flag=self._layer2Flag,
                           layerdropout=self._layerdropout)
         model, loss = model.build()
-        if(self.optimizer.lower()=="adam"):
-            self.optimizer=keras.optimizers.Adamax(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.1)
+        #if(self.optimizer.lower()=="adam"):
+            #self.optimizer=keras.optimizers.Adamax(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.1)
         model.compile(loss=loss, optimizer=self.optimizer)
 
         trainer = Trainer(model, preprocessor=p)
