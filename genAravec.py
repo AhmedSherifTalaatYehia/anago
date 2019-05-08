@@ -8,11 +8,13 @@ import codecs
 
 
 
-
-
-
-
-
+# check if word is an English or not
+def pureEnglish(word):
+    for eachIndex in range(len(word)):
+        StringUnicode=ord(word[eachIndex])
+        if not (StringUnicode>=65 and StringUnicode<=122):
+            return False
+    return True
 
 
 
@@ -128,17 +130,38 @@ def checkerLen(x_test_org,y_pred):
 
 
 
-def vectorSim(t_model,word,ratioSimilarity,topn):
+def vectorSim(t_model,t_en_model,word,ratioSimilarity,topn):
 
     token = clean_str(word)
     simArray=[]
-    most_similar = t_model.wv.most_similar(token, topn=topn)
-    for term, score in most_similar:
-        if(score>=ratioSimilarity):
-            #print(term, score)
-            simArray.append(term)
+    if (token in t_model.wv.vocab and not pureEnglish(token)):
 
-    return simArray
+        most_similar = t_model.wv.most_similar(token, topn=topn)
+        for term, score in most_similar:
+            term = clean_str(term).replace(" ", "_")
+            termArray=term.split("_")
+            if(score>=ratioSimilarity):
+                #print(term, score)
+                for TA in termArray:
+                    simArray.append(TA)
+        if(token in simArray):
+            simArray.remove(token)
+        return simArray
+
+    elif(token in t_en_model.wv.vocab and pureEnglish(token) ):
+            most_similar = t_model.wv.most_similar(token, topn=topn)
+            for term, score in most_similar:
+                term = clean_str(term).replace(" ", "_")
+                termArray = term.split("_")
+                if (score >= ratioSimilarity):
+                    # print(term, score)
+                    for TA in termArray:
+                        simArray.append(TA)
+            if (token in simArray):
+                simArray.remove(token)
+            return simArray
+    else:
+        return simArray
 
 def getAllPredTags(x_test_org,y_pred):
 
@@ -182,26 +205,34 @@ def getAllPredTags(x_test_org,y_pred):
 
 
 
-def AdjustPredTag(t_model,x_test_org,y_pred,ratioSimilarity,topn):
+def AdjustPredTag(t_model,t_en_model,x_test_org,y_pred,ratioSimilarity,topn):
 
     tupleArray=getAllPredTags(x_test_org,y_pred)
     array=[]
     allTagArray=[]
     for element in tupleArray:
-        for wordArray,tag in element:
-            for eachWord in wordArray:
-                simArray=vectorSim(t_model,eachWord,ratioSimilarity,topn)
+        wordArray=element[0]
+        tag=element[1]
+        for eachWord in wordArray:
+            simArray=vectorSim(t_model,t_en_model,eachWord,ratioSimilarity,topn)
+            if(len(simArray)>0):
                 array.append(simArray)
 
-            flatten_array = list(chain.from_iterable(array))
-            allTagArray.append((flatten_array,tag))
-            array=[]
+        flatten_array = list(chain.from_iterable(array))
+        allTagArray.append((flatten_array,tag))
+        array=[]
 
 
     for i in range(len(x_test_org)):
         for j in range(len(x_test_org[i])):
+
+            if("pad" in y_pred[i][j]):
+                y_pred="O"
+
             for tokenArray,label in allTagArray:
                 if(x_test_org[i][j] in tokenArray):
+                    if("pad" in label):
+                        print("pad is here")
                     y_pred[i][j]=label+" "+"mod"
 
 

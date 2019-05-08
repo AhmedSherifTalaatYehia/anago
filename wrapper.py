@@ -142,8 +142,9 @@ class Sequence(object):
             # adjust here
             # vector similarity approach
 
-            if(self._ArTwitterFlag):
-                AdjustPredTag(t_model=ArTwitter,x_test_org=x_test_org,y_pred=y_pred,ratioSimilarity=0.6,topn=30)
+            if(self._ArTwitterFlag and self._fastEnFlag):
+                print("here")
+                AdjustPredTag(t_model=ArTwitter,t_en_model=EnText,x_test_org=x_test_org,y_pred=y_pred,ratioSimilarity=0.6,topn=30)
                 writeTupleArray(x_test_org,y_pred,self._fileToWrite)
 
             #checkerLen(x_test_org,y_pred)
