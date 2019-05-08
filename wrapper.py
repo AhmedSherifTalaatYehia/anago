@@ -130,7 +130,7 @@ class Sequence(object):
             if(self._fastArFlag):
                 ArText=KeyedVectors.load_word2vec_format(self._fastModelAr)
             if(self._fastEnFlag):
-                EnText=KeyedVectors.load_word2vec_format(self._fastModelAr)
+                EnText=KeyedVectors.load_word2vec_format(self._fastModelEn)
             if(self._ArTwitterFlag):
                 ArTwitter=gensim.models.Word2Vec.load(self._ArTwitterModel)
 
