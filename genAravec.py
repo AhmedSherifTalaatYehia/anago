@@ -25,12 +25,12 @@ def pureEnglish(word):
 # Clean/Normalize Arabic Text
 
 
-def writeTupleArray(x_test_org,y_pred,fileToWrite="experment.txt"):
+def writeTupleArray(x_test_org,y_test,y_pred,fileToWrite="experment.txt"):
 
     fileWriteName = open(fileToWrite, "w", encoding='utf-8')
     for index in range(len(x_test_org)):
         for eachIndex in range(len(x_test_org[index])):
-            fileWriteName.write(x_test_org[index][eachIndex]+" "+y_pred[index][eachIndex]+"\n")
+            fileWriteName.write(x_test_org[index][eachIndex]+" "+y_test[index][eachIndex]+" "+y_pred[index][eachIndex]+"\n")
 
 
 

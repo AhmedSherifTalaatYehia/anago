@@ -113,7 +113,7 @@ class Sequence(object):
         self.p = p
         self.model = model
 
-    def score(self, x_test, y_test):
+    def score(self, x_test, y_test,fileToWrite):
         """Returns the f1-micro score on the given test data and labels.
 
         Args:
@@ -127,12 +127,12 @@ class Sequence(object):
             score : float, f1-micro score.
         """
         if self.model:
-            if(self._fastArFlag):
-                ArText=KeyedVectors.load_word2vec_format(self._fastModelAr)
-            if(self._fastEnFlag):
-                EnText=KeyedVectors.load_word2vec_format(self._fastModelEn)
-            if(self._ArTwitterFlag):
-                ArTwitter=gensim.models.Word2Vec.load(self._ArTwitterModel)
+            # if(self._fastArFlag):
+            #     ArText=KeyedVectors.load_word2vec_format(self._fastModelAr)
+            # if(self._fastEnFlag):
+            #     EnText=KeyedVectors.load_word2vec_format(self._fastModelEn)
+            # if(self._ArTwitterFlag):
+            #     ArTwitter=gensim.models.Word2Vec.load(self._ArTwitterModel)
 
             x_test_org=x_test
             x_test = self.p.transform(x_test)
@@ -142,16 +142,17 @@ class Sequence(object):
             # adjust here
             # vector similarity approach
 
-            if(self._ArTwitterFlag and self._fastEnFlag):
-                print("here")
-                AdjustPredTag(t_model=ArTwitter,t_en_model=EnText,x_test_org=x_test_org,y_pred=y_pred,ratioSimilarity=0.6,topn=30)
-                writeTupleArray(x_test_org,y_pred,self._fileToWrite)
+            # if(self._ArTwitterFlag and self._fastEnFlag):
+            #     print("here")
+            #     AdjustPredTag(t_model=ArTwitter,t_en_model=EnText,x_test_org=x_test_org,y_pred=y_pred,ratioSimilarity=0.6,topn=30)
+            writeTupleArray(x_test_org,y_test,y_pred,fileToWrite)
 
             #checkerLen(x_test_org,y_pred)
             #print(y_pred)
-            #print(classification_report(y_test,y_pred))
-            #score = f1_score(y_test, y_pred)
-            #return score
+            print(classification_report(y_test,y_pred))
+            score = f1_score(y_test, y_pred)
+            print("f-score is ",score)
+            return score
         else:
             raise OSError('Could not find a model. Call load(dir_path).')
 
