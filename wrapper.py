@@ -9,11 +9,6 @@ from anago.tagger import Tagger
 from anago.trainer import Trainer
 from anago.utils import filter_embeddings
 import keras
-from anago.genAravec import writeTupleArray,clean_str,get_vec,calc_vec,get_all_ngrams,get_ngrams,get_existed_tokens,checkerLen,vectorSim,AdjustPredTag,getAllPredTags
-from gensim.models import KeyedVectors
-import gensim
-from seqeval.metrics import classification_report
-
 
 class Sequence(object):
 
@@ -30,11 +25,7 @@ class Sequence(object):
                  initial_vocab=None,
                  optimizer='adam',
                  layer2Flag=False,
-                 layerdropout=0,
-                 fastArFlag=False,
-                 fastModelAr="",
-                 fastEnFlag=False,
-                 fastModelEn="",ArTwitterFlag=False,ArTwitterModel="",fileToWrite="Invalid.txt"):
+                 layerdropout=0):
 
         self.model = None
         self.p = None
@@ -53,13 +44,6 @@ class Sequence(object):
         self.optimizer = optimizer
         self._layer2Flag = layer2Flag
         self._layerdropout = layerdropout
-        self._fastArFlag=fastArFlag
-        self._fastEnFlag=fastEnFlag
-        self._fastModelAr=fastModelAr
-        self._fastModelEn=fastModelEn
-        self._ArTwitterFlag=ArTwitterFlag
-        self._ArTwitterModel=ArTwitterModel
-        self._fileToWrite=fileToWrite
 
     def fit(self, x_train, y_train, x_valid=None, y_valid=None,
             epochs=1, batch_size=32, verbose=1, callbacks=None, shuffle=True):
@@ -113,7 +97,7 @@ class Sequence(object):
         self.p = p
         self.model = model
 
-    def score(self, x_test, y_test,fileToWrite):
+    def score(self, x_test, y_test):
         """Returns the f1-micro score on the given test data and labels.
 
         Args:
@@ -127,31 +111,11 @@ class Sequence(object):
             score : float, f1-micro score.
         """
         if self.model:
-            # if(self._fastArFlag):
-            #     ArText=KeyedVectors.load_word2vec_format(self._fastModelAr)
-            # if(self._fastEnFlag):
-            #     EnText=KeyedVectors.load_word2vec_format(self._fastModelEn)
-            # if(self._ArTwitterFlag):
-            #     ArTwitter=gensim.models.Word2Vec.load(self._ArTwitterModel)
-
-            x_test_org=x_test
             x_test = self.p.transform(x_test)
             lengths = map(len, y_test)
             y_pred = self.model.predict(x_test)
             y_pred = self.p.inverse_transform(y_pred, lengths)
-            # adjust here
-            # vector similarity approach
-
-            # if(self._ArTwitterFlag and self._fastEnFlag):
-            #     print("here")
-            #     AdjustPredTag(t_model=ArTwitter,t_en_model=EnText,x_test_org=x_test_org,y_pred=y_pred,ratioSimilarity=0.6,topn=30)
-            writeTupleArray(x_test_org,y_test,y_pred,fileToWrite)
-
-            #checkerLen(x_test_org,y_pred)
-            #print(y_pred)
-            print(classification_report(y_test,y_pred))
             score = f1_score(y_test, y_pred)
-            print("f-score is ",score)
             return score
         else:
             raise OSError('Could not find a model. Call load(dir_path).')
