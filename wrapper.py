@@ -2,6 +2,7 @@
 Wrapper class.
 """
 from seqeval.metrics import f1_score
+from seqeval.metrics import classification_report
 
 from anago.models import BiLSTMCRF, save_model, load_model
 from anago.preprocessing import IndexTransformer
@@ -116,6 +117,7 @@ class Sequence(object):
             y_pred = self.model.predict(x_test)
             y_pred = self.p.inverse_transform(y_pred, lengths)
             score = f1_score(y_test, y_pred)
+            print(classification_report(y_test,y_pred))
             return score
         else:
             raise OSError('Could not find a model. Call load(dir_path).')
