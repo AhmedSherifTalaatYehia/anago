@@ -116,7 +116,7 @@ class Sequence(object):
             lengths = map(len, y_test)
             y_pred = self.model.predict(x_test)
             y_pred = self.p.inverse_transform(y_pred, lengths)
-            score = f1_score(y_test, y_pred)
+            score = f1_score(y_test, y_pred,average='macro')
             print(classification_report(y_test,y_pred))
             return score
         else:
