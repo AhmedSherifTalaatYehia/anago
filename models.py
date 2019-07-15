@@ -3,6 +3,7 @@ Model definition.
 """
 import json
 
+from seqeval.metrics import f1_score
 from keras.layers import Dense, LSTM, Bidirectional, Embedding, Input, Dropout, TimeDistributed
 from keras.layers.merge import Concatenate
 from keras.models import Model, model_from_json
@@ -47,9 +48,7 @@ class BiLSTMCRF(object):
                  dropout=0.5,
                  embeddings=None,
                  use_char=True,
-                 use_crf=True,
-                 layer2Flag=False,
-                 layerdropout=0):
+                 use_crf=True):
         """Build a Bi-LSTM CRF model.
 
         Args:
@@ -79,8 +78,6 @@ class BiLSTMCRF(object):
         self._use_crf = use_crf
         self._embeddings = embeddings
         self._num_labels = num_labels
-        self._layer2Flag=layer2Flag
-        self._layerdropout=layerdropout
 
     def build(self):
         # build word embedding
@@ -110,9 +107,7 @@ class BiLSTMCRF(object):
             word_embeddings = Concatenate()([word_embeddings, char_embeddings])
 
         word_embeddings = Dropout(self._dropout)(word_embeddings)
-        z = Bidirectional(LSTM(units=self._word_lstm_size, return_sequences=True,dropout=self._layerdropout, recurrent_dropout=self._layerdropout))(word_embeddings)
-        if(self._layer2Flag):
-            z=Bidirectional(LSTM(units=self._word_lstm_size, return_sequences=True,dropout=self._layerdropout, recurrent_dropout=self._layerdropout))(z)
+        z = Bidirectional(LSTM(units=self._word_lstm_size, return_sequences=True))(word_embeddings)
         z = Dense(self._fc_dim, activation='tanh')(z)
 
         if self._use_crf:
@@ -126,3 +121,135 @@ class BiLSTMCRF(object):
         model = Model(inputs=inputs, outputs=pred)
 
         return model, loss
+
+
+class ELModel(object):
+    """
+    A Keras implementation of ELMo BiLSTM-CRF for sequence labeling.
+    """
+
+    def __init__(self,
+                 num_labels,
+                 word_vocab_size,
+                 char_vocab_size=None,
+                 word_embedding_dim=100,
+                 char_embedding_dim=25,
+                 word_lstm_size=100,
+                 char_lstm_size=25,
+                 fc_dim=100,
+                 dropout=0.5,
+                 embeddings=None):
+        """Build a Bi-LSTM CRF model.
+
+        Args:
+            word_vocab_size (int): word vocabulary size.
+            char_vocab_size (int): character vocabulary size.
+            num_labels (int): number of entity labels.
+            word_embedding_dim (int): word embedding dimensions.
+            char_embedding_dim (int): character embedding dimensions.
+            word_lstm_size (int): character LSTM feature extractor output dimensions.
+            char_lstm_size (int): word tagger LSTM output dimensions.
+            fc_dim (int): output fully-connected layer size.
+            dropout (float): dropout rate.
+            embeddings (numpy array): word embedding matrix.
+        """
+        self._char_embedding_dim = char_embedding_dim
+        self._word_embedding_dim = word_embedding_dim
+        self._char_lstm_size = char_lstm_size
+        self._word_lstm_size = word_lstm_size
+        self._char_vocab_size = char_vocab_size
+        self._word_vocab_size = word_vocab_size
+        self._fc_dim = fc_dim
+        self._dropout = dropout
+        self._embeddings = embeddings
+        self._num_labels = num_labels
+
+    def build(self):
+        # build word embedding
+        word_ids = Input(batch_shape=(None, None), dtype='int32', name='word_input')
+        if self._embeddings is None:
+            word_embeddings = Embedding(input_dim=self._word_vocab_size,
+                                        output_dim=self._word_embedding_dim,
+                                        mask_zero=True,
+                                        name='word_embedding')(word_ids)
+        else:
+            word_embeddings = Embedding(input_dim=self._embeddings.shape[0],
+                                        output_dim=self._embeddings.shape[1],
+                                        mask_zero=True,
+                                        weights=[self._embeddings],
+                                        name='word_embedding')(word_ids)
+
+        # build character based word embedding
+        char_ids = Input(batch_shape=(None, None, None), dtype='int32', name='char_input')
+        char_embeddings = Embedding(input_dim=self._char_vocab_size,
+                                    output_dim=self._char_embedding_dim,
+                                    mask_zero=True,
+                                    name='char_embedding')(char_ids)
+        char_embeddings = TimeDistributed(Bidirectional(LSTM(self._char_lstm_size)))(char_embeddings)
+
+        elmo_embeddings = Input(shape=(None, 1024), dtype='float32')
+
+        word_embeddings = Concatenate()([word_embeddings, char_embeddings, elmo_embeddings])
+
+        word_embeddings = Dropout(self._dropout)(word_embeddings)
+        z = Bidirectional(LSTM(units=self._word_lstm_size, return_sequences=True))(word_embeddings)
+        z = Bidirectional(LSTM(units=self._word_lstm_size, return_sequences=True))(z)
+        z = Dense(self._fc_dim, activation='tanh')(z)
+
+        crf = CRF(self._num_labels, sparse_target=False)
+        loss = crf.loss_function
+        pred = crf(z)
+
+        model = Model(inputs=[word_ids, char_ids, elmo_embeddings], outputs=pred)
+
+        return model, loss
+
+
+    def predict(self, x_test):
+        """Returns the prediction of the model on the given test data.
+
+        Args:
+            x_test : array-like, shape = (n_samples, sent_length)
+            Test samples.
+
+        Returns:
+            y_pred : array-like, shape = (n_smaples, sent_length)
+            Prediction labels for x.
+        """
+        if self.model:
+            lengths = map(len, x_test)
+            x_test = self.p.transform(x_test)
+            y_pred = self.model.predict(x_test)
+            y_pred = self.p.inverse_transform(y_pred, lengths)
+            return y_pred
+        else:
+            raise OSError('Could not find a model. Call load(dir_path).')
+
+
+    def score(self, x_test, y_test):
+        """Returns the f1-micro score on the given test data and labels.
+
+        Args:
+            x_test : array-like, shape = (n_samples, sent_length)
+            Test samples.
+
+            y_test : array-like, shape = (n_samples, sent_length)
+            True labels for x.
+
+        Returns:
+            score : float, f1-micro score.
+        """
+        if self.model:
+            x_test = self.p.transform(x_test)
+            lengths = map(len, y_test)
+            y_pred = self.model.predict(x_test)
+            y_pred = self.p.inverse_transform(y_pred, lengths)
+            score = f1_score(y_test, y_pred)
+            return score
+        else:
+            raise OSError('Could not find a model. Call load(dir_path).')
+
+
+    def save(self, weights_file, params_file, preprocessor_file):
+        self.p.save(preprocessor_file)
+        save_model(self.model, weights_file, params_file)
