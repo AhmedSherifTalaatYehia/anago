@@ -239,10 +239,10 @@ class Sequence(object):
             y_pred = self.p.inverse_transform(y_pred, lengths)
             print("Macro score")
             score = f1_score(y_test, y_pred,average='macro')
-            print(classification_report(y_test, y_pred))
+            print(classification_report(y_test, y_pred,digits=4))
             print("f-score is",score)
-            print("precision is ",precision_score(y_test,y_pred))
-            print("recall is",recall_score(y_test,y_pred))
+            print("precision is ",precision_score(y_test,y_pred,average='macro'))
+            print("recall is",recall_score(y_test,y_pred,average='macro'))
             return score
         else:
             raise OSError('Could not find a model. Call load(dir_path).')
