@@ -9,6 +9,8 @@ from keras.layers.merge import Concatenate
 from keras.models import Model, model_from_json
 
 from anago.layers import CRF
+import keras
+from keras_self_attention import SeqSelfAttention
 
 
 def save_model(model, weights_file, params_file):
@@ -48,7 +50,10 @@ class BiLSTMCRF(object):
                  dropout=0.5,
                  embeddings=None,
                  use_char=True,
-                 use_crf=True):
+                 use_crf=True,
+                 attentionWidth=15,
+                 selfAttentionLayerFlag=False
+                 ):
         """Build a Bi-LSTM CRF model.
 
         Args:
@@ -78,6 +83,8 @@ class BiLSTMCRF(object):
         self._use_crf = use_crf
         self._embeddings = embeddings
         self._num_labels = num_labels
+        self._attentionWidth=attentionWidth
+        self._selfAttentionLayerFlag=selfAttentionLayerFlag
 
     def build(self):
         # build word embedding
@@ -108,6 +115,15 @@ class BiLSTMCRF(object):
 
         word_embeddings = Dropout(self._dropout)(word_embeddings)
         z = Bidirectional(LSTM(units=self._word_lstm_size, return_sequences=True))(word_embeddings)
+        if(self._selfAttentionLayerFlag):
+            z = SeqSelfAttention(
+            attention_width=self._attentionWidth,
+            attention_type=SeqSelfAttention.ATTENTION_TYPE_MUL,
+            attention_activation=None,
+            kernel_regularizer=keras.regularizers.l2(1e-6),
+            use_attention_bias=False,
+            name='Attention',
+            )(z)
         z = Dense(self._fc_dim, activation='tanh')(z)
 
         if self._use_crf:
@@ -138,7 +154,10 @@ class ELModel(object):
                  char_lstm_size=25,
                  fc_dim=100,
                  dropout=0.5,
-                 embeddings=None):
+                 embeddings=None,
+                 attentionWidth=15,
+                 selfAttentionLayerFlag=False
+                 ):
         """Build a Bi-LSTM CRF model.
 
         Args:
@@ -163,6 +182,8 @@ class ELModel(object):
         self._dropout = dropout
         self._embeddings = embeddings
         self._num_labels = num_labels
+        self._attentionWidth = attentionWidth
+        self._selfAttentionLayerFlag = selfAttentionLayerFlag
 
     def build(self):
         # build word embedding
@@ -194,6 +215,15 @@ class ELModel(object):
         word_embeddings = Dropout(self._dropout)(word_embeddings)
         z = Bidirectional(LSTM(units=self._word_lstm_size, return_sequences=True))(word_embeddings)
         z = Bidirectional(LSTM(units=self._word_lstm_size, return_sequences=True))(z)
+        if (self._selfAttentionLayerFlag):
+            z = SeqSelfAttention(
+                attention_width=self._attentionWidth,
+                attention_type=SeqSelfAttention.ATTENTION_TYPE_MUL,
+                attention_activation=None,
+                kernel_regularizer=keras.regularizers.l2(1e-6),
+                use_attention_bias=False,
+                name='Attention',
+            )(z)
         z = Dense(self._fc_dim, activation='tanh')(z)
 
         crf = CRF(self._num_labels, sparse_target=False)

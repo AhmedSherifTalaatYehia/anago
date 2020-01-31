@@ -29,7 +29,9 @@ class Sequence(object):
                  optimizer='adam',
                  layer2Flag=False,
                  layerdropout=0,
-                 embeddings_path=None
+                 embeddings_path=None,
+                 attentionWidth=15,
+                 selfAttentionLayerFlag=False
                  ):
 
         self.model = None
@@ -50,6 +52,9 @@ class Sequence(object):
         self._layer2Flag = layer2Flag
         self._layerdropout = layerdropout
         self._embeddings_path = embeddings_path
+        self._attentionWidth=attentionWidth
+        self._selfAttentionLayerFlag=selfAttentionLayerFlag
+
 
 
     def fit(self, x_train, y_train, x_valid=None, y_valid=None,
@@ -87,7 +92,10 @@ class Sequence(object):
                           dropout=self.dropout,
                           embeddings=embeddings,
                           use_char=self.use_char,
-                          use_crf=self.use_crf)
+                          use_crf=self.use_crf,
+                          attentionWidth=self._attentionWidth,
+                          selfAttentionLayerFlag=self._selfAttentionLayerFlag
+                          )
         model, loss = model.build()
         model.compile(loss=loss, optimizer=self.optimizer)
 
@@ -237,12 +245,12 @@ class Sequence(object):
             lengths = map(len, y_test)
             y_pred = self.model.predict(x_test)
             y_pred = self.p.inverse_transform(y_pred, lengths)
-            print("Macro score")
-            score = f1_score(y_test, y_pred,average='macro')
+            print("Micro score")
+            score = f1_score(y_test, y_pred,average='micro')
             print(classification_report(y_test, y_pred,digits=4))
             print("f-score is",score)
-            print("precision is ",precision_score(y_test,y_pred,average='macro'))
-            print("recall is",recall_score(y_test,y_pred,average='macro'))
+            print("precision is ",precision_score(y_test,y_pred,average='micro'))
+            print("recall is",recall_score(y_test,y_pred,average='micro'))
             return score
         else:
             raise OSError('Could not find a model. Call load(dir_path).')
